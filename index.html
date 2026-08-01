@@ -83,7 +83,7 @@ input:focus, textarea:focus, select:focus { border-color: #6C3FC5; }
 <div class="wrap">
 
 <div class="header">
-  <div><div class="header-title">Speak&amp;Smile</div><div class="header-sub">Генератор отчётов · Mimi's Wheel 3 + JP</div></div>
+  <div><div class="header-title">Speak&amp;Smile</div><div class="header-sub">Генератор отчётов · Mimi's Wheel 3 + Phonics Hero</div></div>
   <div class="header-badge">MW3</div>
 </div>
 
@@ -135,7 +135,7 @@ input:focus, textarea:focus, select:focus { border-color: #6C3FC5; }
     </div>
   </div>
 
-  <div class="section-title" style="margin-top:16px">🔤 Jolly Phonics — чтение и звуки</div>
+  <div class="section-title" style="margin-top:16px">🔤 Phonics Hero 2.0 — чтение и звуки</div>
   <div class="field"><span class="lbl">Фониксы (знает звуки, читает слова)</span><div class="srow" id="prow"></div><div class="shint" id="phint"></div></div>
 
   <div class="section-title" style="margin-top:16px">📋 Посещаемость и домашняя практика</div>
@@ -226,32 +226,32 @@ input:focus, textarea:focus, select:focus { border-color: #6C3FC5; }
 // ═══════════════════════════════════════
 var UNITS = [
   {n:'1',label:'1',t:'Hello — Знакомство',m:'Сентябрь',
-   v:'hello, goodbye, yes, no, please, thank you, stand up, sit down',
-   ph:'Заглавные буквы S A T I P N C K E H R M D · первые tricky words'},
+   v:'Mummy, Daddy, Mimi, Dylan, Big Wheel, red, blue, green, orange, pink, yellow, one, two, three, four, five, six',
+   ph:'повтор звуков s·a·t·i·p·n·c·k·e · CVC-блендинг: sat, pin (тетрадь стр.3–9)'},
   {n:'2',label:'2',t:'School — Школа',m:'Сентябрь–Октябрь',
    v:'colour, count, dance, draw, jump, paint, play, run, sing, think',
-   ph:'Заглавные G O U L F B J V W X Y Z · диграфы ch, sh'},
+   ph:'диграфы ai·oa·ie: rain, boat, pie (тетрадь стр.33–35)'},
   {n:'3',label:'3',t:'The park — Парк',m:'Октябрь–Ноябрь',
    v:'bench, flowers, grass, path, pond, roundabout, seesaw, slide, swing, tree',
-   ph:'Диграфы th мягкий и твёрдый · ng · короткие гласные a e i o u'},
+   ph:'звуки ou·oi: out, round, coin (тетрадь стр.46–48)'},
   {n:'4',label:'4',t:'Wild animals — Дикие животные',m:'Ноябрь–Декабрь',
    v:'crocodile, elephant, giraffe, hippo, lion, monkey, parrot, snake, tiger, zebra',
-   ph:'Magic e: a-e · e-e · i-e · o-e · u-e · /ai/: ai · ay · a-e'},
-  {n:'5',label:'5',t:'Daily routines — Распорядок дня',m:'Январь–Февраль',
+   ph:'Magic E: i-e — bike, kite, five (тетрадь стр.58–60)'},
+  {n:'5',label:'5',t:'Daily routines — Распорядок дня',m:'Декабрь–Январь',
    v:'brush my hair, brush my teeth, get dressed, get up, have a shower, have breakfast, have lunch, have dinner, wash my face, wash my hands',
-   ph:'/ee/: ee · ea · e-e · /ie/: ie · i-e · y · igh · Диктант /ai/ /ee/ /ie/'},
-  {n:'6',label:'6',t:'Meals — Еда',m:'Февраль–Март',
+   ph:'звук /и:/: ee · ea · e-e · y — see, eat, happy'},
+  {n:'6',label:'6',t:'Meals — Еда',m:'Февраль',
    v:'chicken, fish, pancakes, pizza, rice, salad, soup, spaghetti, toast, yogurt',
-   ph:'/oa/: oa · ow · o-e · /oo/ длинный и короткий · /or/ · /er/: er · ir'},
+   ph:'звуки /ау/ ou·ow и /ой/ oi·oy — cloud, cow, coin, toy'},
   {n:'7',label:'7',t:'Town — Город',m:'Март',
    v:'supermarket, shopping centre, museum, zoo, swimming pool, cinema, restaurant, toy shop, book shop, park',
-   ph:'/er/: ur · /ar/ · /air/: air · ear/are · /ou/: ou · ow · /oi/: oi · oy'},
+   ph:'повторение /ау/ и /ой/ — out, house, town, coin + беглое чтение'},
   {n:'8',label:'8',t:'Music — Музыка',m:'Март–Апрель',
    v:'clap, dance, drum, guitar, listen, maracas, piano, recorder, sing, tambourine',
-   ph:'/ue/: ue · ew/u-e · y=/ee/ · Soft c · Soft g · ph=/f/ · Тексты: The fish · The fox'},
+   ph:'звук /оу/: oa · ow · o-e — boat, snow, home'},
   {n:'9',label:'9',t:'Bugs — Насекомые',m:'Апрель–Май',
    v:'ant, bee, butterfly, ladybird, snail, worm, legs, spots, stripes, wings',
-   ph:'Тексты: The hen · The pond · Предложения · Анаграммы · Все tricky words · Финальный диктант'},
+   ph:'финал курса: свободное чтение историй (тетрадь Часть 4, стр.66–90)'},
 ];
 
 // ═══════════════════════════════════════
@@ -278,11 +278,11 @@ var AT = {
 
 // Фониксы
 var PT = {
-  5: function(name,u,g){ return 'По программе Jolly Phonics — отличный результат! '+name+' уверенно знает все звуки этого периода ('+u.ph+'), читает слова самостоятельно и с удовольствием. Это очень сильная база для будущего чтения.'; },
-  4: function(name,u,g){ return 'По программе Jolly Phonics '+name+' хорошо усваивает материал: знает большинство звуков ('+u.ph+') и читает слова уверенно. Иногда нужна небольшая подсказка, но прогресс очень заметен.'; },
-  3: function(name,u,g){ return 'По программе Jolly Phonics '+name+' осваивает звуки постепенно. Тема этого периода — '+u.ph+'. Часть звуков уже знает хорошо, над остальными продолжаем работать в игровой форме на уроках.'; },
-  2: function(name,u,g){ return 'По программе Jolly Phonics '+name+' пока осваивает звуки с поддержкой педагога. Тема — '+u.ph+'. Чтение слов даётся непросто, но это вопрос времени и регулярной практики. Рекомендуем заниматься в «Твоей школе» каждый день по 5 минут.'; },
-  1: function(name,u,g){ return 'По программе Jolly Phonics '+name+' пока испытывает затруднения со звуками и чтением. Тема периода — '+u.ph+'. Мы продолжаем работать в игровом формате. Домашняя практика в «Твоей школе» очень поможет.'; },
+  5: function(name,u,g){ return 'По чтению (Phonics Hero 2.0) — отличный результат! '+name+' уверенно знает все звуки этого периода ('+u.ph+'), читает слова самостоятельно и с удовольствием. Это очень сильная база для будущего чтения.'; },
+  4: function(name,u,g){ return 'По чтению (Phonics Hero 2.0) '+name+' хорошо усваивает материал: знает большинство звуков ('+u.ph+') и читает слова уверенно. Иногда нужна небольшая подсказка, но прогресс очень заметен.'; },
+  3: function(name,u,g){ return 'По чтению (Phonics Hero 2.0) '+name+' осваивает звуки постепенно. Тема этого периода — '+u.ph+'. Часть звуков уже знает хорошо, над остальными продолжаем работать в игровой форме на уроках.'; },
+  2: function(name,u,g){ return 'По чтению (Phonics Hero 2.0) '+name+' пока осваивает звуки с поддержкой педагога. Тема — '+u.ph+'. Чтение слов даётся непросто, но это вопрос времени и регулярной практики. Рекомендуем заниматься в «Твоей школе» каждый день по 5 минут.'; },
+  1: function(name,u,g){ return 'По чтению (Phonics Hero 2.0) '+name+' пока испытывает затруднения со звуками и чтением. Тема периода — '+u.ph+'. Мы продолжаем работать в игровом формате. Домашняя практика в «Твоей школе» очень поможет.'; },
 };
 
 // Песни
@@ -352,7 +352,7 @@ function selUnitByIdx(i,mode,btn){
   if(btn) btn.classList.add('on');
   else document.querySelectorAll('#'+pId+' .pill')[i].classList.add('on');
   var u=UNITS[i];
-  document.getElementById(iId).innerHTML='<strong>'+u.t+'</strong> · '+u.m+'<br>Лексика: «'+u.v+'»<br>JP: «'+u.ph+'»';
+  document.getElementById(iId).innerHTML='<strong>Юнит '+u.n+' · '+u.t+'</strong> · '+u.m+'<br>Лексика: «'+u.v+'»<br>Чтение: «'+u.ph+'»';
   if(mode==='group') GS.ui=i; else{S.ui=i;chkOne();}
 }
 
@@ -413,7 +413,7 @@ function buildReport(name,teacher,ui,v,a,p,att,song,miss,ts,nav,note,gender){
   // Блок 1: приветствие
   var fnRod=fnRod_gen(fn,g);
   var uspel=g==='m'?'успел':'успела';
-  var intro='<p>Дорогие родители!</p><p>Завершился юнит <strong>'+u.n+' — «'+u.t+'»</strong>. Хотим поделиться с вами тем, как прошёл этот месяц у '+fnRod+', и что '+uspel+' освоить.</p>';
+  var intro='<p>Дорогие родители!</p><p>Завершился <strong>Юнит '+u.n+' · '+u.t+'</strong>. Хотим поделиться с вами тем, как прошёл этот месяц у '+fnRod+', и что '+uspel+' освоить.</p>';
 
   // Блок 2: Mimi's Wheel
   var mimiBlock='<p><strong>🐱 Mimi\'s Wheel — язык и общение</strong></p>';
@@ -422,7 +422,7 @@ function buildReport(name,teacher,ui,v,a,p,att,song,miss,ts,nav,note,gender){
   if(song) mimiBlock+='<p>'+SONGT[song](fn,g)+'</p>';
 
   // Блок 3: JP
-  var jpBlock='<p><strong>🔤 Jolly Phonics — чтение и звуки</strong></p>';
+  var jpBlock='<p><strong>🔤 Phonics Hero 2.0 — чтение и звуки</strong></p>';
   jpBlock+='<p>'+PT[p](fn,u,g)+'</p>';
 
   // Блок 4: посещаемость и практика
@@ -641,7 +641,7 @@ function showUnitData(name,ui){
   var d=JSON.parse(localStorage.getItem(makeKey(currentTeacher,name,ui))||'null');
   if(!d){alert('Нет данных');return;}
   var u=UNITS[ui];
-  alert('Юнит '+u.label+' — '+u.t+'\nЛексика: '+d.v+'/5  Фониксы: '+d.p+'/5  Активность: '+d.a+'/5\n'+(d.att?'Посещаемость: '+d.att+'/8\n':'')+'Сохранено: '+d.savedAt);
+  alert('Юнит '+u.n+' · '+u.t+'\nЛексика: '+d.v+'/5  Фониксы: '+d.p+'/5  Активность: '+d.a+'/5\n'+(d.att?'Посещаемость: '+d.att+'/8\n':'')+'Сохранено: '+d.savedAt);
 }
 
 function deletePupil(name){
@@ -684,13 +684,13 @@ function showYearReport(name){
   for(var uu=0;uu<9;uu++){var dd=JSON.parse(localStorage.getItem(makeKey(currentTeacher,name,uu))||'null');if(dd&&dd.gender){gyr=dd.gender;break;}}
   var teacher=currentTeacher||'[Педагог]';
   var vSumm=vn>=4?fn+' уверенно знает лексику пройденных юнитов и свободно использует слова в речи':vn>=3?fn+' постепенно осваивает лексику — часть слов знает хорошо, над остальными продолжаем работать':fn+' нужна дополнительная поддержка с лексикой и регулярная практика дома';
-  var pSumm=pn>=4?'По Jolly Phonics — очень сильный результат: '+fn+' уверенно читает слова с пройденными звуками':pn>=3?'По Jolly Phonics '+fn+' осваивает чтение постепенно, прогресс заметен':'По Jolly Phonics чтение пока вызывает затруднения — рекомендуем ежедневные занятия в «Твоей школе»';
+  var pSumm=pn>=4?'По чтению (Phonics Hero 2.0) — очень сильный результат: '+fn+' уверенно читает слова с пройденными звуками':pn>=3?'По чтению (Phonics Hero 2.0) '+fn+' осваивает чтение постепенно, прогресс заметен':'По чтению (Phonics Hero 2.0) чтение пока вызывает затруднения — рекомендуем ежедневные занятия в «Твоей школе»';
   var actW=gyr==='m'?'активен':'активна';
   var aSumm=an>=4?'На уроках '+fn+' '+actW+' и с радостью включается во все игры и активности':an>=3?'На уроках '+fn+' в целом участвует в работе группы':'На уроках '+fn+' пока больше наблюдает — продолжаем создавать комфортную атмосферу';
 
   var fnRod=fnRod_gen(fn,gyr);
   var html='<p>Дорогие родители!</p>'+
-    '<p>Учебный год по курсу <strong>Mimi\'s Wheel 3 Plus + Jolly Phonics Book 2</strong> завершён. Мы хотим рассказать вам, как прошёл этот год у '+fnRod+'.</p>'+
+    '<p>Учебный год по курсу <strong>Mimi\'s Wheel 3 Plus + Phonics Hero 2.0</strong> завершён. Мы хотим рассказать вам, как прошёл этот год у '+fnRod+'.</p>'+
     '<p>За год пройдено <strong>'+done+' из 9</strong> юнитов. Общая посещаемость: <strong>'+totalAtt+'/'+(done*8)+'</strong> уроков.</p><br>'+
     '<p>'+vSumm+'.</p>'+
     '<p>'+pSumm+'.</p>'+
