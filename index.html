@@ -197,6 +197,22 @@ input:focus, textarea:focus, select:focus { border-color: #6C3FC5; }
     <div class="field"><label class="lbl" for="gTeacher">Педагог</label><input type="text" id="gTeacher" placeholder="Имя педагога"></div>
   </div>
 </div>
+<div class="card" id="crmCard">
+  <div class="section-title">Посещение из CRM</div>
+  <div style="font-size:13px;color:#6B6280;line-height:1.45;margin-bottom:10px">Выберите юнит выше и нажмите кнопку: имена, посещение, отработки пропусков и занятия в «Твоей школе» подтянутся из BigBen. Лексику, фониксы, активность, песни, Navio, пол и заметку заполните сами.</div>
+  <div style="font-size:13px;color:#3B1F78;margin-bottom:8px">Группа в CRM: <strong id="crmGroupName">MIMI 3</strong></div>
+  <div style="font-size:12px;font-weight:700;color:#6B6280;margin-bottom:4px">Уроки юнита в CRM — с … по …</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <input type="date" id="crmFrom" style="padding:9px 10px;border-radius:8px;border:1.5px solid #ddd;font-size:14px;font-family:inherit;background:white;flex:1;min-width:130px">
+    <input type="date" id="crmTo" style="padding:9px 10px;border-radius:8px;border:1.5px solid #ddd;font-size:14px;font-family:inherit;background:white;flex:1;min-width:130px">
+  </div>
+  <div id="crmDatesHint" style="font-size:12px;color:#888;line-height:1.4;margin:4px 0 10px"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <input type="text" id="crmCode" placeholder="Код учителя" autocomplete="off" style="flex:1;min-width:140px">
+    <button type="button" id="crmBtn" class="genbtn" onclick="crmPull()" style="width:auto;flex:none;padding:11px 18px;font-size:14px;margin:0">Подтянуть из CRM</button>
+  </div>
+  <div id="crmMsg" style="font-size:13px;line-height:1.5;margin-top:10px;color:#3B1F78"></div>
+</div>
 <div id="pupilRows"></div>
 <div class="card" style="text-align:center">
   <button class="genbtn" onclick="genGroup()" style="max-width:400px;margin:0 auto 10px">Сгенерировать все отчёты</button>
@@ -320,6 +336,95 @@ var GS={ui:0};
 var PS={};
 for(var pi=1;pi<=12;pi++) PS[pi]={v:0,a:0,p:0,song:'',miss:'',ts:'',nav:'',gender:'f'};
 
+// ════════════════════════════════════════
+// CRM: посещение блока (nihao-bot /reports/submit, crm). Тестов в CRM нет → период по датам;
+// первый блок без дат = первые 8 уроков года в группе.
+// ════════════════════════════════════════
+var CRM_GROUP='MIMI 3', CRM_CONSULT='консультация mimi3', CRM_HOME='mimi', CRM_APP='ts', CRM_INTRO_L=8;
+var CRM_DATES=[['09-03','09-30'],['10-01','10-28'],['10-29','11-25'],['11-26','12-23'],['12-24','02-03'],['02-04','03-03'],['03-04','03-31'],['04-01','04-28'],['04-29','05-26']]; // по КТП 2026–27 (MM-DD), подставляются в поля дат — учитель сверяет с журналом
+var CRM_APPMAP={regular:'reg',sometimes:'some',rarely:'rare',never:'never'};
+var CRM_URLS=['https://d5d6o4mldv5m1nj5hvih.6brbn2wz.apigw.yandexcloud.net/nihao/reports/submit','https://nihao-bot.o-sintsova.workers.dev/reports/submit'];
+function crmYear(md){ var t=new Date(), y0=t.getMonth()>=7?t.getFullYear():t.getFullYear()-1; return (parseInt(md,10)>=8?y0:y0+1)+'-'+md; }
+function crmFillDates(ui){
+  var f=document.getElementById('crmFrom'), t=document.getElementById('crmTo'), h=document.getElementById('crmDatesHint'), d=CRM_DATES[ui];
+  if(!f) return;
+  if(ui===0){ f.value=''; t.value=''; h.textContent='Можно оставить пустыми — возьму первые '+CRM_INTRO_L+' уроков года в группе.'; }
+  else if(d){ f.value=crmYear(d[0]); t.value=crmYear(d[1]); h.textContent='Даты подставлены по КТП — сверьте с журналом группы (первый и последний урок блока).'; }
+  else { f.value=''; t.value=''; h.textContent='Укажите даты первого и последнего урока блока.'; }
+}
+function crmQuery(ui){
+  var f=document.getElementById('crmFrom').value, t=document.getElementById('crmTo').value;
+  if(f&&t) return f<=t?{from:f,to:t}:{err:'Дата «с» позже даты «по».'};
+  if(f||t) return {err:'Заполните обе даты.'};
+  if(ui===0) return {intro:true,introL:CRM_INTRO_L};
+  return {err:'Укажите даты первого и последнего урока блока.'};
+}
+function crmPost(body){
+  var i=0;
+  return new Promise(function(res,rej){
+    (function next(){
+      if(i>=CRM_URLS.length) return rej(new Error('net'));
+      var ctl=window.AbortController?new AbortController():null, tm=setTimeout(function(){ if(ctl)ctl.abort(); },75000);
+      fetch(CRM_URLS[i++],{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:ctl?ctl.signal:undefined})
+        .then(function(r){return r.json();}).then(function(j){clearTimeout(tm);res(j);})
+        .catch(function(){clearTimeout(tm);next();});
+    })();
+  });
+}
+function crmName(fio){ var w=String(fio).trim().split(/\s+/); return w.length>1?w.slice(1).join(' ')+' '+w[0]:w[0]; }
+function crmWords(s){ return String(s||'').toLowerCase().replace(/ё/g,'е').split(/\s+/).filter(Boolean); }
+function crmRow(name,used){
+  var want=crmWords(name), empty=0;
+  for(var i=1;i<=12;i++){
+    var v=document.getElementById('p'+i+'_name').value.trim();
+    if(!v){ if(!empty&&!used[i])empty=i; continue; }
+    var have=crmWords(v);
+    if(!used[i]&&want.every(function(w){return have.indexOf(w)>=0;})) return i;
+  }
+  return empty;
+}
+function crmOpt(i,key,val){
+  var bs=document.querySelectorAll('#pupilRows .mob'), pre='mOpt('+i+',\''+key+'\',\''+val+'\'';
+  for(var b=0;b<bs.length;b++) if((bs[b].getAttribute('onclick')||'').indexOf(pre)===0){ mOpt(i,key,val,bs[b]); return; }
+}
+function crmDm(d){ return d?d.slice(8,10)+'.'+d.slice(5,7):''; }
+function crmEsc(s){ return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+function crmPull(){
+  var msg=document.getElementById('crmMsg'), btn=document.getElementById('crmBtn');
+  var u=UNITS[GS.ui], q=crmQuery(GS.ui), lab='Юнит '+u.n;
+  if(!q){ msg.innerHTML='Для блока «'+crmEsc(lab)+'» данных в CRM нет — для этого блока заполните вручную.'; return; }
+  if(q.err){ msg.innerHTML=crmEsc(q.err); return; }
+  var code=document.getElementById('crmCode').value.trim();
+  if(!code){ msg.innerHTML='Введите код учителя (тот же, что для отправки отчётов родителям).'; return; }
+  try{ localStorage.setItem('ss_tcode',code); }catch(e){}
+  btn.disabled=true; btn.textContent='Загружаю…'; msg.innerHTML='Смотрю BigBen: '+crmEsc(CRM_GROUP)+', '+crmEsc(lab)+'…';
+  crmPost({code:code,crm:Object.assign({group:CRM_GROUP,consult:CRM_CONSULT,app:true,home:CRM_HOME},q)}).then(function(j){
+    btn.disabled=false; btn.textContent='Подтянуть из CRM';
+    if(!j||!j.ok){ msg.innerHTML='⚠️ '+crmEsc((j&&j.error)||'Не получилось'); return; }
+    if(!j.lessons){ msg.innerHTML='В CRM нет уроков группы за этот период'+(q.from?' ('+crmDm(q.from)+'–'+crmDm(q.to)+')':'')+'.'; return; }
+    var used={}, notes=[], n=0;
+    j.students.forEach(function(s){
+      var nm=crmName(s.fio), i=crmRow(nm,used);
+      if(!i){ notes.push(crmEsc(nm)+' — нет свободной строки'); return; }
+      used[i]=1; n++;
+      var ni=document.getElementById('p'+i+'_name'); if(!ni.value.trim()) ni.value=nm;
+      var of=s.lessons||j.lessons; PS[i].of=of; var ai=document.getElementById('p'+i+'_att'); ai.max=of; ai.value=Math.max(0,of-s.missed.length);
+      var al=document.getElementById('p'+i+'_attlab'); if(al) al.textContent='Посещ./'+of+' (CRM)';
+      var bits=[], made=s.made||[];
+      if(!s.missed.length) crmOpt(i,'miss','none'); else crmOpt(i,'miss',made.length>=s.missed.length?'ok':'no');
+      if(s.app&&CRM_APPMAP[s.app.level]) crmOpt(i,CRM_APP,CRM_APPMAP[s.app.level]);
+      if(s.missed.length) bits.push('пропуски '+s.missed.map(function(d){return crmDm(d)+(made.indexOf(d)>=0?' (отработан)':'');}).join(', ')+(made.length&&made.length<s.missed.length?' — отработаны частично, отмечено «Не отраб.»':''));
+      if(s.home&&s.home.length) bits.push('«Урок дома»: '+s.home.map(function(h){return crmDm(h.day)+' '+crmEsc(String(h.lesson).replace(new RegExp('^'+CRM_HOME+'-'),''))+(h.score?' ('+crmEsc(h.score)+')':'');}).join(', '));
+      if(s.app) bits.push(s.app.days?'«Твоя школа»: '+s.app.days+' дн. занятий, '+s.app.weeks+' нед. из '+s.app.of:'занятий в «Твоей школе» нет');
+      if(bits.length) notes.push('<strong>'+crmEsc(nm)+'</strong> — '+bits.join('; '));
+    });
+    msg.innerHTML='✓ '+crmEsc(CRM_GROUP)+' · '+crmEsc(lab)+': уроки '+crmDm(j.from)+'–'+crmDm(j.to)+' ('+j.lessons+' в CRM). Заполнено учеников: '+n+'.'+
+      (notes.length?'<div style="margin-top:6px;color:#6B6280">'+notes.join('<br>')+'</div>':'')+
+      '<div style="margin-top:6px;color:#6B6280">Посещение — как в CRM: был / уроков за период в CRM (у пришедших позже — только их уроки). «Пропуски» — отработан, если '+(CRM_CONSULT?'ученик был в группе «'+crmEsc(CRM_CONSULT)+'» в течение 8 дней после пропуска или ':'')+'прошёл «Урок дома» в течение 14 дней. «Твоя школа» — по неделям с занятиями: 3 из 4 и больше — регулярно, от 40% — иногда, меньше — редко.</div>';
+  }).catch(function(){ btn.disabled=false; btn.textContent='Подтянуть из CRM'; msg.innerHTML='⚠️ Нет связи с сервером. Если включён VPN — выключите и попробуйте ещё раз.'; });
+}
+(function(){ try{ var c=localStorage.getItem('ss_tcode'); if(c) document.addEventListener('DOMContentLoaded',function(){ var i=document.getElementById('crmCode'); if(i&&!i.value) i.value=c; }); }catch(e){} })();
+
 // ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
@@ -353,7 +458,7 @@ function selUnitByIdx(i,mode,btn){
   else document.querySelectorAll('#'+pId+' .pill')[i].classList.add('on');
   var u=UNITS[i];
   document.getElementById(iId).innerHTML='<strong>Юнит '+u.n+' · '+u.t+'</strong> · '+u.m+'<br>Лексика: «'+u.v+'»<br>Чтение: «'+u.ph+'»';
-  if(mode==='group') GS.ui=i; else{S.ui=i;chkOne();}
+  if(mode==='group'){ GS.ui=i; crmFillDates(i); crmResetOf(); } else{S.ui=i;chkOne();}
 }
 
 function buildScoreRow(rowId,key,hints){
@@ -395,8 +500,8 @@ function firstName(fullName){
   return fullName.trim().split(' ')[0];
 }
 
-function buildReport(name,teacher,ui,v,a,p,att,song,miss,ts,nav,note,gender){
-  var u=UNITS[ui];
+function buildReport(name,teacher,ui,v,a,p,att,song,miss,ts,nav,note,gender,of){
+  var u=UNITS[ui], LL=parseInt(of,10)||8; // of — уроков юнита в CRM (кнопка «Подтянуть из CRM»), иначе 8 по плану
   var fn=firstName(name);
   var g=gender||'f';
   var on =g==='m'?'он':'она';
@@ -429,14 +534,14 @@ function buildReport(name,teacher,ui,v,a,p,att,song,miss,ts,nav,note,gender){
   var practBlock='<p><strong>📋 Посещаемость и домашняя практика</strong></p>';
   var practLines=[];
   if(att){
-    var attNum=parseInt(att); var missed=8-attNum;
+    var attNum=parseInt(att); var missed=LL-attNum;
     var poset=g==='m'?'посетил':'посетила';
     var propust=g==='m'?'пропустил':'пропустила';
     var attStr='';
-    if(attNum===8) attStr=fn+' '+poset+' все 8 уроков этого юнита — отличная посещаемость! 🎉';
-    else if(missed===1) attStr=fn+' '+propust+' 1 урок из 8.';
-    else attStr=fn+' '+poset+' '+attNum+' из 8 уроков.';
-    if(miss&&miss!=='none'&&attNum<8){
+    if(attNum>=LL) attStr=fn+' '+poset+' '+(LL>1?'все '+LL+' '+crmUr(LL):'единственный урок')+' этого юнита — отличная посещаемость! 🎉';
+    else if(missed===1) attStr=fn+' '+propust+' 1 урок из '+LL+'.';
+    else attStr=fn+' '+poset+' '+attNum+' из '+LL+' уроков.';
+    if(miss&&miss!=='none'&&attNum<LL){
       if(miss==='ok') attStr+=' Пропущенный материал отработан — молодцы!';
       else if(miss==='no') attStr+=' Пропущенные уроки пока не отработаны — рекомендуем послушать истории в Navio, чтобы не терять нить.';
     }
@@ -494,7 +599,12 @@ function buildPupilRows(){
       '<div class="pupil-field"><label>Лексика</label><div class="mini-scores">'+msc(i,'v')+'</div></div>'+
       '<div class="pupil-field"><label>Фониксы (JP)</label><div class="mini-scores">'+msc(i,'p')+'</div></div>'+
       '<div class="pupil-field"><label>Активность</label><div class="mini-scores">'+msc(i,'a')+'</div></div>'+
-      '<div class="pupil-field"><label>Посещ./8</label><input type="number" id="p'+i+'_att" placeholder="8" min="0" max="8"></div>'+
+      '<div class="pupil-field"><label id="p'+i+'_attlab">Посещ./8</label><input type="number" id="p'+i+'_att" placeholder="8" min="0" max="8"></div>'+
+      '<div class="pupil-field"><label>Пропуски</label><div class="mini-opts">'+
+        '<button class="mob" onclick="mOpt('+i+',\'miss\',\'none\',this)">Нет</button>'+
+        '<button class="mob" onclick="mOpt('+i+',\'miss\',\'ok\',this)">Отработаны</button>'+
+        '<button class="mob" onclick="mOpt('+i+',\'miss\',\'no\',this)">Не отраб.</button>'+
+      '</div></div>'+
       '<div class="pupil-field"><label>Песни</label><div class="mini-opts">'+
         '<button class="mob" onclick="mOpt('+i+',\'song\',\'yes\',this)">✓ Поёт</button>'+
         '<button class="mob" onclick="mOpt('+i+',\'song\',\'part\',this)">Частично</button>'+
@@ -518,6 +628,8 @@ function buildPupilRows(){
 }
 function msc(i,key){var h='';for(var s=1;s<=5;s++)h+='<button class="msb" onclick="mSel('+i+',\''+key+'\','+s+',this)">'+s+'</button>';return h;}
 function mSel(pu,key,val,btn){PS[pu][key]=val;btn.parentElement.querySelectorAll('.msb').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');}
+function crmUr(n){ var m=n%10,h=n%100; return (m===1&&h!==11)?'урок':(m>=2&&m<=4&&(h<12||h>14))?'урока':'уроков'; }
+function crmResetOf(){ for(var k=1;k<=12;k++){ if(PS[k]&&PS[k].of){ PS[k].of=0; var a=document.getElementById('p'+k+'_att'), l=document.getElementById('p'+k+'_attlab'); if(a)a.max=8; if(l)l.textContent='Посещ./8'; } } }
 function mOpt(pu,key,val,btn){PS[pu][key]=val;btn.parentElement.querySelectorAll('.mob').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');}
 
 function genGroup(){
@@ -530,7 +642,7 @@ function genGroup(){
     var v=PS[i].v||3,a=PS[i].a||3,p=PS[i].p||3;
     var att=document.getElementById('p'+i+'_att').value;
     var note=document.getElementById('p'+i+'_note').value.trim();
-    var html=buildReport(name,teacher,GS.ui,v,a,p,att,PS[i].song,PS[i].miss,PS[i].ts,PS[i].nav,note,PS[i].gender||'f');
+    var html=buildReport(name,teacher,GS.ui,v,a,p,att,PS[i].song,PS[i].miss,PS[i].ts,PS[i].nav,note,PS[i].gender||'f',PS[i].of);
     var card=document.createElement('div'); card.className='card';
     var bId='gcpbtn'+i;
     card.innerHTML='<div class="greport-name"><span>'+name+'</span><button class="cpbtn" id="'+bId+'" onclick="cpGroup(\''+bId+'\','+i+')">Копировать</button></div><div class="greport-text" id="greport'+i+'">'+html+'</div>';
@@ -589,7 +701,7 @@ function saveGroup(){
   for(var i=1;i<=12;i++){
     var name=document.getElementById('p'+i+'_name').value.trim(); if(!name) continue;
     var data={name:name,teacher:currentTeacher,ui:GS.ui,v:PS[i].v||0,a:PS[i].a||0,p:PS[i].p||0,gender:PS[i].gender||'f',
-      att:document.getElementById('p'+i+'_att').value,song:PS[i].song,miss:PS[i].miss,ts:PS[i].ts,nav:PS[i].nav,
+      att:document.getElementById('p'+i+'_att').value,attOf:PS[i].of||'',song:PS[i].song,miss:PS[i].miss,ts:PS[i].ts,nav:PS[i].nav,
       note:document.getElementById('p'+i+'_note').value.trim(),savedAt:new Date().toLocaleDateString('ru')};
     localStorage.setItem(makeKey(currentTeacher,name,GS.ui),JSON.stringify(data));
     var idx=JSON.parse(localStorage.getItem('smw3_idx_'+currentTeacher)||'[]');
@@ -641,7 +753,7 @@ function showUnitData(name,ui){
   var d=JSON.parse(localStorage.getItem(makeKey(currentTeacher,name,ui))||'null');
   if(!d){alert('Нет данных');return;}
   var u=UNITS[ui];
-  alert('Юнит '+u.n+' · '+u.t+'\nЛексика: '+d.v+'/5  Фониксы: '+d.p+'/5  Активность: '+d.a+'/5\n'+(d.att?'Посещаемость: '+d.att+'/8\n':'')+'Сохранено: '+d.savedAt);
+  alert('Юнит '+u.n+' · '+u.t+'\nЛексика: '+d.v+'/5  Фониксы: '+d.p+'/5  Активность: '+d.a+'/5\n'+(d.att?'Посещаемость: '+d.att+'/'+(d.attOf||8)+'\n':'')+'Сохранено: '+d.savedAt);
 }
 
 function deletePupil(name){
@@ -661,17 +773,17 @@ function trend(arr){if(arr.length<2)return '';if(arr[arr.length-1]>arr[0])return
 function sc(v){return v?'score-'+Math.min(v,5):'';}
 
 function showYearReport(name){
-  var rows='',vArr=[],aArr=[],pArr=[],totalAtt=0,done=0;
+  var rows='',vArr=[],aArr=[],pArr=[],totalAtt=0,done=0,totalMax=0;
   for(var u=0;u<9;u++){
     var d=JSON.parse(localStorage.getItem(makeKey(currentTeacher,name,u))||'null');
     var un=UNITS[u];
     if(d){
       done++;
       if(d.v)vArr.push(+d.v); if(d.a)aArr.push(+d.a); if(d.p)pArr.push(+d.p);
-      if(d.att)totalAtt+=+d.att;
+      if(d.att)totalAtt+=+d.att; totalMax+=parseInt(d.attOf,10)||8;
       rows+='<tr><td style="font-weight:700;color:#6C3FC5">'+un.label+'</td><td style="font-size:10px;color:#888">'+un.m+'</td>'+
         '<td class="'+sc(d.v)+'">'+(d.v||'—')+'</td><td class="'+sc(d.p)+'">'+(d.p||'—')+'</td><td class="'+sc(d.a)+'">'+(d.a||'—')+'</td>'+
-        '<td>'+(d.att?d.att+'/8':'—')+'</td><td style="font-size:10px">'+(d.song?{yes:'✓',part:'частично',no:'нет'}[d.song]||'—':'—')+'</td></tr>';
+        '<td>'+(d.att?d.att+'/'+(d.attOf||8):'—')+'</td><td style="font-size:10px">'+(d.song?{yes:'✓',part:'частично',no:'нет'}[d.song]||'—':'—')+'</td></tr>';
     } else {
       rows+='<tr><td style="font-weight:700;color:#6C3FC5">'+un.label+'</td><td style="font-size:10px;color:#888">'+un.m+'</td><td colspan="5" style="color:#ddd;font-size:11px">нет данных</td></tr>';
     }
@@ -691,7 +803,7 @@ function showYearReport(name){
   var fnRod=fnRod_gen(fn,gyr);
   var html='<p>Дорогие родители!</p>'+
     '<p>Учебный год по курсу <strong>Mimi\'s Wheel 3 Plus + Phonics Hero 2.0</strong> завершён. Мы хотим рассказать вам, как прошёл этот год у '+fnRod+'.</p>'+
-    '<p>За год пройдено <strong>'+done+' из 9</strong> юнитов. Общая посещаемость: <strong>'+totalAtt+'/'+(done*8)+'</strong> уроков.</p><br>'+
+    '<p>За год пройдено <strong>'+done+' из 9</strong> юнитов. Общая посещаемость: <strong>'+totalAtt+'/'+totalMax+'</strong> уроков.</p><br>'+
     '<p>'+vSumm+'.</p>'+
     '<p>'+pSumm+'.</p>'+
     '<p>'+aSumm+'.</p><br>'+
