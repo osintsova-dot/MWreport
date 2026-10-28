@@ -201,12 +201,15 @@ input:focus, textarea:focus, select:focus { border-color: #6C3FC5; }
   <div class="section-title">Посещение из CRM</div>
   <div style="font-size:13px;color:#6B6280;line-height:1.45;margin-bottom:10px">Выберите юнит выше и нажмите кнопку: имена, посещение, отработки пропусков и занятия в «Твоей школе» подтянутся из BigBen. Лексику, фониксы, активность, песни, Navio, пол и заметку заполните сами.</div>
   <div style="font-size:13px;color:#3B1F78;margin-bottom:8px">Группа в CRM: <strong id="crmGroupName">MIMI 3</strong></div>
-  <div style="font-size:12px;font-weight:700;color:#6B6280;margin-bottom:4px">Уроки юнита в CRM — с … по …</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <input type="date" id="crmFrom" style="padding:9px 10px;border-radius:8px;border:1.5px solid #ddd;font-size:14px;font-family:inherit;background:white;flex:1;min-width:130px">
-    <input type="date" id="crmTo" style="padding:9px 10px;border-radius:8px;border:1.5px solid #ddd;font-size:14px;font-family:inherit;background:white;flex:1;min-width:130px">
-  </div>
-  <div id="crmDatesHint" style="font-size:12px;color:#888;line-height:1.4;margin:4px 0 10px"></div>
+  <div id="crmRangeInfo" style="font-size:13px;color:#3B1F78;margin-bottom:6px"></div>
+  <details id="crmDatesBox" style="margin-bottom:10px">
+    <summary style="font-size:12px;font-weight:700;color:#6C3FC5;cursor:pointer">Указать даты вручную</summary>
+    <div style="font-size:12px;color:#888;line-height:1.4;margin:6px 0">Если заполнить обе даты — возьму уроки группы с первой по вторую дату вместо номеров уроков.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="date" id="crmFrom" style="padding:9px 10px;border-radius:8px;border:1.5px solid #ddd;font-size:14px;font-family:inherit;background:white;flex:1;min-width:130px">
+      <input type="date" id="crmTo" style="padding:9px 10px;border-radius:8px;border:1.5px solid #ddd;font-size:14px;font-family:inherit;background:white;flex:1;min-width:130px">
+    </div>
+  </details>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <input type="text" id="crmCode" placeholder="Код учителя" autocomplete="off" style="flex:1;min-width:140px">
     <button type="button" id="crmBtn" class="genbtn" onclick="crmPull()" style="width:auto;flex:none;padding:11px 18px;font-size:14px;margin:0">Подтянуть из CRM</button>
@@ -340,24 +343,23 @@ for(var pi=1;pi<=12;pi++) PS[pi]={v:0,a:0,p:0,song:'',miss:'',ts:'',nav:'',gende
 // CRM: посещение блока (nihao-bot /reports/submit, crm). Тестов в CRM нет → период по датам;
 // первый блок без дат = первые 8 уроков года в группе.
 // ════════════════════════════════════════
-var CRM_GROUP='MIMI 3', CRM_CONSULT='консультация mimi3', CRM_HOME='mimi', CRM_APP='ts', CRM_INTRO_L=8;
-var CRM_DATES=[['09-03','09-30'],['10-01','10-28'],['10-29','11-25'],['11-26','12-23'],['12-24','02-03'],['02-04','03-03'],['03-04','03-31'],['04-01','04-28'],['04-29','05-26']]; // по КТП 2026–27 (MM-DD), подставляются в поля дат — учитель сверяет с журналом
+var CRM_GROUP='MIMI 3', CRM_CONSULT='консультация mimi3', CRM_HOME='mimi', CRM_APP='ts';
+var CRM_L=[8,8,8,8,8,8,8,8,8]; // уроков в блоках по КТП → блок = уроки группы с a-го по b-й за учебный год (range)
 var CRM_APPMAP={regular:'reg',sometimes:'some',rarely:'rare',never:'never'};
 var CRM_URLS=['https://d5d6o4mldv5m1nj5hvih.6brbn2wz.apigw.yandexcloud.net/nihao/reports/submit','https://nihao-bot.o-sintsova.workers.dev/reports/submit'];
-function crmYear(md){ var t=new Date(), y0=t.getMonth()>=7?t.getFullYear():t.getFullYear()-1; return (parseInt(md,10)>=8?y0:y0+1)+'-'+md; }
+function crmRange(ui){ var a=0; for(var k=0;k<ui;k++) a+=CRM_L[k]; return CRM_L[ui]?[a+1,a+CRM_L[ui]]:null; }
 function crmFillDates(ui){
-  var f=document.getElementById('crmFrom'), t=document.getElementById('crmTo'), h=document.getElementById('crmDatesHint'), d=CRM_DATES[ui];
+  var f=document.getElementById('crmFrom'), t=document.getElementById('crmTo'), h=document.getElementById('crmRangeInfo'), r=crmRange(ui);
   if(!f) return;
-  if(ui===0){ f.value=''; t.value=''; h.textContent='Можно оставить пустыми — возьму первые '+CRM_INTRO_L+' уроков года в группе.'; }
-  else if(d){ f.value=crmYear(d[0]); t.value=crmYear(d[1]); h.textContent='Даты подставлены по КТП — сверьте с журналом группы (первый и последний урок блока).'; }
-  else { f.value=''; t.value=''; h.textContent='Укажите даты первого и последнего урока блока.'; }
+  f.value=''; t.value=''; document.getElementById('crmDatesBox').open=false;
+  h.textContent=r?'Возьму уроки группы с '+r[0]+'-го по '+r[1]+'-й с начала учебного года (по CRM).':'Для этого блока укажите даты вручную.';
 }
 function crmQuery(ui){
-  var f=document.getElementById('crmFrom').value, t=document.getElementById('crmTo').value;
+  var f=document.getElementById('crmFrom').value, t=document.getElementById('crmTo').value, r=crmRange(ui);
   if(f&&t) return f<=t?{from:f,to:t}:{err:'Дата «с» позже даты «по».'};
-  if(f||t) return {err:'Заполните обе даты.'};
-  if(ui===0) return {intro:true,introL:CRM_INTRO_L};
-  return {err:'Укажите даты первого и последнего урока блока.'};
+  if(f||t) return {err:'Заполните обе даты или очистите их.'};
+  if(r) return {range:r};
+  return null;
 }
 function crmPost(body){
   var i=0;
